@@ -1,7 +1,7 @@
 # csgo_gc
 
 > [!CAUTION]
-> This project is under active development and is approaching stability, but issues may still exist. Back up your game files before installation.
+> This project is under active development and is approaching stability, but issues may still exist. Back up your game files before installation. 
 
 > [!NOTE]
 > Docs are at https://csgo-gc.gt610.dpdns.org/.
