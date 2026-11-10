@@ -1,4 +1,4 @@
-# csgo_gc
+# OpenGameCoordinator
 
 > [!CAUTION]
 > This project is under active development and is approaching stability, but issues may still exist. Back up your game files before installation. 
