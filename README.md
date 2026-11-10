@@ -3,91 +3,12 @@
 > [!CAUTION]
 > This project is under active development and is approaching stability, but issues may still exist. Back up your game files before installation. 
 
-> [!NOTE]
-> Docs are at https://csgo-gc.gt610.dpdns.org/.
 
 ## What is this?
 In Valve games, the Game Coordinator (GC) is a backend service most notably responsible for matchmaking and inventory management (like loadouts and skins). This project redirects the GC traffic to a custom, in-process implementation.
 
-This fork targets the final September 2023 legacy CS:GO client. It preserves interoperability with upstream for shared client/server protocol features, while fork-specific features may not have an upstream equivalent.
-
-## Why would you want this?
-While it's still possible to connect CS:GO to CS2's GC by spoofing the version number, this may break in the future if Valve updates the GC protocol. This project aims to restore most GC-related functionality without relying on a centralized server.
-
-## Current features
-- Editable inventory (`inventory.txt`)
-- Live inventory updates while the game is running
-- Item equipping and loadout updates
-- Opening cases, sticker capsules, patch packs, graffiti boxes, music kit boxes and souvenir packages
-- Souvenir item generation
-- Stickers and patches
-- Name tags
-- Graffiti support
-- Music kits
-- Weapon StatTrak support
-- Music kit StatTrak support, including round MVP count propagation
-- Storage Units
-- StatTrak Swaps
-- Trade ups
-- In-game store purchases
-- Read-only inventory consistency diagnostics
-- Source RCON-compatible local control interface
-- Parameterized RCON item creation for paint kits, wear, seed, StatTrak, music kits, sprays, stickers and custom names
-- Works without full Steam API emulation
-- Full Windows, Linux and macOS support
-- Functional lobbies
-- Dedicated server support
-- Functional server browser (only shows csgo_gc servers by default)
-- Networking using Steam's P2P interface
-- Matchmaking UI in the local client, so the official Matchmaking screens can be inspected
-
-## Planned features
-- More validation and polish for edge-case inventory operations
-- Tooling around live inventory editing
-
-I'm still looking for the **full** CS:GO Item Schema. If you have a relatively recent copy of it and are willing to share it, let me know!
-
-## Currently not planned
-- Matchmaking itself (can't be implemented without a centralized server, possibly will be considered in the future)
-
-The Matchmaking screens are a separate matter. The client still ships the full frontend for them and only the menu entry was disabled, so the screens can be brought back. Queueing still needs Valve's own matchmaking backend and does not work, so treat them as something to inspect rather than a way to find games. See [Matchmaking UI](https://csgo-gc.gt610.dpdns.org/user/matchmaking-ui).
-
-## Installation
-See [User Guide](https://csgo-gc.gt610.dpdns.org/user/).
-
-## Inventory editing
-Inventory can still be edited offline through `inventory.txt`. For manual editing, there is a guide made by someone else [here](https://gist.github.com/dricotec/1ae3deb06c42012970c00df914348e76). For GUI editors, see [this issue](https://github.com/mikkokko/csgo_gc/issues/82).
-
-The local RCON interface can also create and remove items while the game is running. This is intended for scripts and GUI editors that want to avoid the old edit-file-and-restart workflow.
-
-See [Souvenir Packages](https://csgo-gc.gt610.dpdns.org/user/souvenirs) for tournament attributes, examples
-for different Major eras, manual `inventory.txt` editing, and an explanation of
-how package loot lists differ from souvenir sticker metadata.
-
-## Configuration
-See [Configuration](https://csgo-gc.gt610.dpdns.org/user/configuration) for available options.
-
-Supplemental server-only loot lists that are missing from the client schema are
-stored in [csgo_gc/gc_loot_lists.txt](examples/gc_loot_lists.txt). An external
-loot list can include an `item_sets` block to reuse collections from
-`items_game.txt` without duplicating every item in the collection.
-
-## RCON
-RCON is disabled by default and binds to localhost with the default configuration; the actual listen address is controlled by `bind_address`. It uses the Source RCON binary protocol, so existing Source RCON clients can be used.
-
-See [RCON user guide](https://csgo-gc.gt610.dpdns.org/user/rcon) for protocol details, configuration, supported parameters and error formats.
-
-## Bug reports and support
-
-**Got a crash or found a bug?**
-* **Broken csgo_gc feature?** Open an issue and follow the instructions.
-* **Game crashing or broken non-GC features?** If you are unsure if csgo_gc caused it, test the game without it installed first. If the bug still happens on a clean build, it's an issue with the game itself. **Do not report base game bugs here.** If you confirm csgo_gc is definitely causing the crash, open an issue.
-
 **Need help, want to share ideas, or self-promote?**
-Use [Discussions](https://github.com/GT-610/csgo-gc/discussions). Do not open issues for support.
-
-## Building
-See [Building](https://csgo-gc.gt610.dpdns.org/developer/building) for building instructions.
+Use [Discussions](https://github.com/hrdcoreee/OpenGC/discussions). Do not open issues for support.
 
 ## License
 This project is licensed under the 2-Clause BSD License. See [LICENSE](LICENSE) for details.
