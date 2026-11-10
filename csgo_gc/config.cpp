@@ -3,7 +3,93 @@
 #include "keyvalue.h"
 #include "random.h"
 
+#include <cstdlib>
+#include <sstream>
+
 constexpr const char *ConfigFilePath = "csgo_gc/config.txt";
+
+static void LoadEnvOverrides(GCConfig &cfg)
+{
+    // Try environment variables first
+    const char *envHost = std::getenv("GC_WS_HOST");
+    if (!envHost) envHost = std::getenv("GC_HOST");
+    const char *envPort = std::getenv("GC_WS_PORT");
+    if (!envPort) envPort = std::getenv("GC_PORT");
+    const char *envToken = std::getenv("GC_SERVER_TOKEN");
+    if (!envToken) envToken = std::getenv("SERVER_TOKEN");
+
+    if (envHost && envHost[0] != '\0')
+    {
+        cfg.m_remoteGcHost = envHost;
+        cfg.m_remoteGcEnabled = true;
+    }
+    if (envPort && envPort[0] != '\0')
+    {
+        cfg.m_remoteGcPort = static_cast<uint16_t>(std::atoi(envPort));
+    }
+    if (envToken && envToken[0] != '\0')
+    {
+        cfg.m_remoteGcToken = envToken;
+    }
+
+    // Check for csgo_gc.env, csgo_gc/csgo_gc.env, .env
+    const char *envFiles[] = { "csgo_gc.env", "csgo_gc/csgo_gc.env", ".env" };
+    for (const char *path : envFiles)
+    {
+        std::string content = LoadFile(path);
+        if (content.empty())
+        {
+            continue;
+        }
+
+        std::istringstream stream(content);
+        std::string line;
+        while (std::getline(stream, line))
+        {
+            size_t start = line.find_first_not_of(" \t\r\n");
+            if (start == std::string::npos || line[start] == '#' || (line[start] == '/' && line[start + 1] == '/'))
+            {
+                continue;
+            }
+
+            size_t eqPos = line.find('=', start);
+            if (eqPos == std::string::npos)
+            {
+                continue;
+            }
+
+            std::string key = line.substr(start, eqPos - start);
+            key.erase(key.find_last_not_of(" \t\r\n") + 1);
+
+            size_t valStart = line.find_first_not_of(" \t\r\n", eqPos + 1);
+            std::string val;
+            if (valStart != std::string::npos)
+            {
+                val = line.substr(valStart);
+                val.erase(val.find_last_not_of(" \t\r\n") + 1);
+            }
+
+            if (key == "GC_WS_HOST" || key == "GC_HOST")
+            {
+                cfg.m_remoteGcHost = val;
+                cfg.m_remoteGcEnabled = true;
+            }
+            else if (key == "GC_WS_PORT" || key == "GC_PORT")
+            {
+                cfg.m_remoteGcPort = static_cast<uint16_t>(std::atoi(val.c_str()));
+            }
+            else if (key == "GC_SERVER_TOKEN" || key == "SERVER_TOKEN")
+            {
+                cfg.m_remoteGcToken = val;
+            }
+            else if (key == "GC_ENABLED")
+            {
+                cfg.m_remoteGcEnabled = (val == "1" || val == "true");
+            }
+        }
+        break;
+    }
+}
 
 const GCConfig &GetConfig()
 {
@@ -27,7 +113,17 @@ GCConfig::GCConfig()
 
     if (!config.ParseFromFile(ConfigFilePath))
     {
+        LoadEnvOverrides(*this);
         return;
+    }
+
+    const KeyValue *remoteGc = config.GetSubkey("remote_gc");
+    if (remoteGc)
+    {
+        m_remoteGcEnabled = remoteGc->GetNumber("enabled", m_remoteGcEnabled);
+        m_remoteGcHost = remoteGc->GetString("host", m_remoteGcHost);
+        m_remoteGcPort = remoteGc->GetNumber("port", m_remoteGcPort);
+        m_remoteGcToken = remoteGc->GetString("token", m_remoteGcToken);
     }
 
     m_logOutput = config.GetNumber("log_output", m_logOutput);
@@ -101,6 +197,9 @@ GCConfig::GCConfig()
     m_commendedLeader = config.GetNumber("cmd_leader", m_commendedLeader);
     m_level = config.GetNumber("player_level", m_level);
     m_xp = config.GetNumber("player_cur_xp", m_xp);
+
+    // .env and environment variables take precedence
+    LoadEnvOverrides(*this);
 }
 
 void GCConfig::PrintDiagnostics() const

@@ -1,2 +1,10 @@
 /*build*/
 /.idea
+/vcpkg
+/release
+.vs/
+*.user
+*.suo
+gc_log.txt
+csgo_gc.env
+.env

@@ -44,6 +44,12 @@ public:
     uint16_t m_rconPort{ 37016 };
     std::string m_rconPassword;
 
+    // Remote GC configuration
+    bool m_remoteGcEnabled{ false };
+    std::string m_remoteGcHost{ "127.0.0.1" };
+    uint16_t m_remoteGcPort{ 37020 };
+    std::string m_remoteGcToken;
+
     // Path the item schema is loaded from. Keep this in sync with the path the
     // game itself reads so item definitions match the running client.
     std::string m_itemSchemaPath{ "csgo/scripts/items/items_game.txt" };

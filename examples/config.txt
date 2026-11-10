@@ -54,6 +54,17 @@
 // not the one this was written against, nothing is patched and a line is logged.
 "allow_unsigned_panorama"	"0"
 
+// remote GC server connection.
+// when enabled, redirects game coordinator traffic to a remote WebSocket server instead of the local in-process GC.
+// can also be configured via csgo_gc.env (GC_WS_HOST, GC_WS_PORT) or environment variables.
+"remote_gc"
+{
+	"enabled"	"0"
+	"host"		"127.0.0.1"
+	"port"		"8080"
+	"token"		""
+}
+
 // local Source RCON. keep bind_address on localhost unless you use a password.
 // empty password accepts any Source RCON password.
 "rcon"

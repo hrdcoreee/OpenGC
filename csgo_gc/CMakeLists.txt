@@ -41,6 +41,7 @@ add_library(csgo_gc SHARED
     panorama.cpp
 
     rcon_server.cpp
+    remote_gc_client.cpp
     saved_item_shuffles.cpp
     souvenir.cpp
     steam_hook.cpp)

@@ -18,6 +18,7 @@
 #include "panorama.h"
 #include "platform.h"
 #include "rcon_server.h"
+#include "remote_gc_client.h"
 #include "saved_item_shuffles.h"
 #include <funchook.h>
 #include <ctime>
@@ -178,6 +179,7 @@ public:
 // these are in file scope for networking, callbacks and gc server
 // client connect/disconnect notifications
 static GCWrapper<ClientGC, NetworkingClient> *s_clientGC;
+static RemoteGCClient *s_remoteGC;
 static GCWrapper<ServerGC, NetworkingServer> *s_serverGC;
 static RconServer s_rconServer;
 
@@ -562,7 +564,7 @@ class SteamGameCoordinatorProxy final
     // False when this side had no usable Steam interfaces at construction time.
     bool HasGC() const
     {
-        return m_server ? s_serverGC != nullptr : s_clientGC != nullptr;
+        return m_server ? s_serverGC != nullptr : (s_remoteGC != nullptr || s_clientGC != nullptr);
     }
 
 public:
@@ -597,7 +599,7 @@ public:
         }
         else
         {
-            assert(!s_clientGC);
+            assert(!s_clientGC && !s_remoteGC);
 
             uint64_t steamId = GetUserSteamId(pipe, user);
             if (!steamId)
@@ -606,9 +608,24 @@ public:
                 return;
             }
 
-            s_clientGC = new GCWrapper<ClientGC, NetworkingClient>{
-                networkingMessages, pipe, user, steamId };
-            s_rconServer.RegisterClient(&s_clientGC->m_gc);
+            if (GetConfig().m_remoteGcEnabled)
+            {
+                Platform::Print("SteamGameCoordinatorProxy: using RemoteGCClient -> %s:%u (SteamID: %llu)\n",
+                    GetConfig().m_remoteGcHost.c_str(), GetConfig().m_remoteGcPort, steamId);
+                s_remoteGC = new RemoteGCClient{
+                    GetConfig().m_remoteGcHost,
+                    GetConfig().m_remoteGcPort,
+                    GetConfig().m_remoteGcToken,
+                    steamId
+                };
+                s_remoteGC->Start();
+            }
+            else
+            {
+                s_clientGC = new GCWrapper<ClientGC, NetworkingClient>{
+                    networkingMessages, pipe, user, steamId };
+                s_rconServer.RegisterClient(&s_clientGC->m_gc);
+            }
         }
     }
 
@@ -623,13 +640,20 @@ public:
         }
         else
         {
+            if (s_remoteGC)
+            {
+                s_remoteGC->Stop();
+                delete s_remoteGC;
+                s_remoteGC = nullptr;
+            }
+
             if (s_clientGC)
             {
                 s_rconServer.UnregisterClient(&s_clientGC->m_gc);
+                delete s_clientGC;
+                s_clientGC = nullptr;
             }
 
-            delete s_clientGC;
-            s_clientGC = nullptr;
             s_pendingMicroTransactionAuthorization.reset();
         }
     }
@@ -647,7 +671,11 @@ public:
         {
             s_serverGC->m_gc.PostToGC(GCEvent::Message, unMsgType, pubData, cubData);
         }
-        else
+        else if (s_remoteGC)
+        {
+            s_remoteGC->SendGCMessage(unMsgType, pubData, cubData);
+        }
+        else if (s_clientGC)
         {
             s_clientGC->m_gc.PostToGC(GCEvent::Message, unMsgType, pubData, cubData);
         }
@@ -666,10 +694,16 @@ public:
         {
             return s_serverGC->m_messageQueue.IsMessageAvailable(*pcubMsgSize);
         }
-        else
+        else if (s_remoteGC)
+        {
+            return s_remoteGC->IsMessageAvailable(*pcubMsgSize);
+        }
+        else if (s_clientGC)
         {
             return s_clientGC->m_messageQueue.IsMessageAvailable(*pcubMsgSize);
         }
+
+        return false;
     }
 
     EGCResults RetrieveMessage(auto, uint32 *punMsgType, void *pubDest, uint32 cubDest, uint32 *pcubMsgSize)
@@ -679,13 +713,17 @@ public:
             return k_EGCResultNoMessage;
         }
 
-        bool result;
+        bool result = false;
 
         if (m_server)
         {
             result = s_serverGC->m_messageQueue.RetrieveMessage(*punMsgType, pubDest, cubDest, *pcubMsgSize);
         }
-        else
+        else if (s_remoteGC)
+        {
+            result = s_remoteGC->RetrieveMessage(*punMsgType, pubDest, cubDest, *pcubMsgSize);
+        }
+        else if (s_clientGC)
         {
             result = s_clientGC->m_messageQueue.RetrieveMessage(*punMsgType, pubDest, cubDest, *pcubMsgSize);
         }
@@ -2022,6 +2060,17 @@ static void Hk_SteamAPI_RunCallbacks()
             response.m_ulOrderID = *transactionToAuthorize;
             response.m_bAuthorized = 1;
             GetCallbackHooks().RunCallback(false, MicroTxnAuthorizationResponse_t::k_iCallback, &response);
+        }
+    }
+
+    if (s_remoteGC)
+    {
+        uint32_t messageSize = 0;
+        if (s_remoteGC->IsMessageAvailable(messageSize))
+        {
+            GCMessageAvailable_t param{};
+            param.m_nMessageSize = messageSize;
+            GetCallbackHooks().RunCallback(false, GCMessageAvailable_t::k_iCallback, &param);
         }
     }
 
